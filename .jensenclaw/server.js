@@ -71,6 +71,19 @@ function wrapWithPersonality(message) {
 CRITICAL: When the user asks for ANY real-time or live data (stock prices, weather, news, sports scores, etc.), you MUST use your bash tool to fetch it with curl. Do NOT answer from training data. For example, for stock prices use: curl -s 'https://query1.finance.yahoo.com/v8/finance/chart/NVDA?interval=1d&range=1d' and parse the JSON result. Always attempt the live fetch even if you think it might fail — the sandbox admin may need to approve the network request first.]\n\nUser message: ${message}`;
 }
 
+function normalizeSessionId(sessionId) {
+  if (typeof sessionId !== "string") {
+    return null;
+  }
+
+  const normalized = sessionId.trim();
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
+}
+
 function runAgentInSandbox(message, sessionId) {
   return new Promise((resolve) => {
     let sshConfig;
@@ -232,13 +245,15 @@ const server = http.createServer((req, res) => {
     req.on("end", async () => {
       try {
         const { message, sessionId } = JSON.parse(body);
-        if (!message || !sessionId) {
+        const normalizedSessionId = normalizeSessionId(sessionId);
+
+        if (typeof message !== "string" || !message.trim() || !normalizedSessionId) {
           res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "message and sessionId required" }));
+          res.end(JSON.stringify({ error: "message and valid sessionId required" }));
           return;
         }
-        console.log(`[sandbox] session=${sessionId} message="${message.slice(0, 80)}"`);
-        const response = await runAgentInSandbox(message, sessionId);
+        console.log(`[sandbox] session=${normalizedSessionId} message="${message.slice(0, 80)}"`);
+        const response = await runAgentInSandbox(message, normalizedSessionId);
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ response }));
       } catch (err) {
