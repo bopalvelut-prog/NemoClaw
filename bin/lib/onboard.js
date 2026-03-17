@@ -97,8 +97,10 @@ async function preflight() {
   } else if (gpu && gpu.type === "apple") {
     console.log(`  ✓ Apple GPU detected: ${gpu.name}${gpu.cores ? ` (${gpu.cores} cores)` : ""}, ${gpu.totalMemoryMB} MB unified memory`);
     console.log("  ⓘ NIM requires NVIDIA GPU — will use cloud inference");
+  } else if (gpu && gpu.type === "intel") {
+    console.log(`  ✓ Intel GPU detected: ${gpu.name} — NIM requires NVIDIA GPU, will use local/cloud fallback`);
   } else {
-    console.log("  ⓘ No GPU detected — will use cloud inference");
+    console.log("  ⓘ No compatible GPU detected — will use cloud or local CPU inference (Ollama)");
   }
 
   return gpu;
@@ -109,13 +111,23 @@ async function preflight() {
 async function startGateway(gpu) {
   step(2, 7, "Starting OpenShell gateway");
 
+  if (!isOpenshellInstalled()) {
+    console.log("  ⓘ OpenShell not installed. Skipping gateway, will run in standard container mode.");
+    return;
+  }
+
   // Destroy old gateway
   run("openshell gateway destroy -g nemoclaw 2>/dev/null || true", { ignoreError: true });
 
   const gwArgs = ["--name", "nemoclaw"];
   if (gpu && gpu.nimCapable) gwArgs.push("--gpu");
 
-  run(`openshell gateway start ${gwArgs.join(" ")}`, { ignoreError: false });
+  try {
+    run(`openshell gateway start ${gwArgs.join(" ")}`, { ignoreError: true });
+  } catch (e) {
+    console.log("  ⓘ Gateway start failed (likely due to missing kernel features). Continuing in lite mode.");
+    return;
+  }
 
   // Verify health
   for (let i = 0; i < 5; i++) {
@@ -224,22 +236,20 @@ async function setupNim(sandboxName, gpu) {
   const ollamaRunning = !!runCapture("curl -sf http://localhost:11434/api/tags 2>/dev/null", { ignoreError: true });
   const vllmRunning = !!runCapture("curl -sf http://localhost:8000/v1/models 2>/dev/null", { ignoreError: true });
 
-  // Auto-select only with NEMOCLAW_EXPERIMENTAL=1 (prevents silent misconfiguration)
-  if (EXPERIMENTAL) {
-    if (vllmRunning) {
-      console.log("  ✓ vLLM detected on localhost:8000 — using it [experimental]");
-      provider = "vllm-local";
-      model = "vllm-local";
-      registry.updateSandbox(sandboxName, { model, provider, nimContainer });
-      return { model, provider };
-    }
-    if (ollamaRunning) {
-      console.log("  ✓ Ollama detected on localhost:11434 — using it [experimental]");
-      provider = "ollama-local";
-      model = "nemotron-3-nano";
-      registry.updateSandbox(sandboxName, { model, provider, nimContainer });
-      return { model, provider };
-    }
+  // Auto-select (prevents silent misconfiguration)
+  if (vllmRunning) {
+    console.log("  ✓ vLLM detected on localhost:8000 — using it");
+    provider = "vllm-local";
+    model = "vllm-local";
+    registry.updateSandbox(sandboxName, { model, provider, nimContainer });
+    return { model, provider };
+  }
+  if (ollamaRunning) {
+    console.log("  ✓ Ollama detected on localhost:11434 — using it");
+    provider = "ollama-local";
+    model = "nemotron-3-nano";
+    registry.updateSandbox(sandboxName, { model, provider, nimContainer });
+    return { model, provider };
   }
 
   // Build options list — always show local options but label as experimental

@@ -111,6 +111,28 @@ function detectGpu() {
     } catch {}
   }
 
+  // Windows/WSL fallback: detect Intel GPU
+  if (process.platform === "win32" || process.env.WSL_DISTRO_NAME) {
+    try {
+      const gpuInfo = runCapture(
+        "powershell.exe -NoProfile -Command \"Get-CimInstance Win32_VideoController | Select-Object Name, AdapterCompatibility | ConvertTo-Json\"",
+        { ignoreError: true }
+      );
+      if (gpuInfo) {
+        const info = JSON.parse(gpuInfo);
+        const name = Array.isArray(info) ? info[0].Name : info.Name;
+        const isIntel = name.toLowerCase().includes("intel");
+        return {
+          type: isIntel ? "intel" : "generic",
+          name,
+          count: 1,
+          totalMemoryMB: 2048, // Default fallback
+          nimCapable: false,
+        };
+      }
+    } catch {}
+  }
+
   return null;
 }
 
