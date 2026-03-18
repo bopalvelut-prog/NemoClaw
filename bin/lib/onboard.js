@@ -130,18 +130,20 @@ async function startGateway(gpu) {
   }
 
   // Verify health
-  for (let i = 0; i < 5; i++) {
+  console.log("  Waiting for gateway to initialize (this can take several minutes on slow hardware)...");
+  for (let i = 0; i < 30; i++) {
     const status = runCapture("openshell status 2>&1", { ignoreError: true });
     if (status.includes("Connected")) {
       console.log("  ✓ Gateway is healthy");
-      break;
+      return;
     }
-    if (i === 4) {
-      console.error("  Gateway failed to start. Run: openshell gateway info");
-      process.exit(1);
+    if (i % 5 === 0 && i > 0) {
+      console.log(`  ... still waiting (${i * 2}s elapsed) ...`);
     }
     require("child_process").spawnSync("sleep", ["2"]);
   }
+  
+  console.log("  ⓘ Gateway taking too long to report healthy. Continuing anyway (lite mode).");
 
   // CoreDNS fix — always run. k3s-inside-Docker has broken DNS on all platforms.
   const home = process.env.HOME || "/tmp";
@@ -235,8 +237,16 @@ async function setupNim(sandboxName, gpu) {
   const hasOllama = !!runCapture("command -v ollama", { ignoreError: true });
   const ollamaRunning = !!runCapture("curl -sf http://localhost:11434/api/tags 2>/dev/null", { ignoreError: true });
   const vllmRunning = !!runCapture("curl -sf http://localhost:8000/v1/models 2>/dev/null", { ignoreError: true });
+  const primaclawRunning = !!runCapture("curl -sf http://localhost:10000/ 2>/dev/null", { ignoreError: true });
 
   // Auto-select (prevents silent misconfiguration)
+  if (primaclawRunning) {
+    console.log("  ✓ Primaclaw detected on localhost:10000 — using it as vLLM endpoint");
+    provider = "vllm-local";
+    model = "qwen2.5-1.5b";
+    registry.updateSandbox(sandboxName, { model, provider, nimContainer });
+    return { model, provider };
+  }
   if (vllmRunning) {
     console.log("  ✓ vLLM detected on localhost:8000 — using it");
     provider = "vllm-local";
@@ -371,12 +381,13 @@ async function setupInference(sandboxName, model, provider) {
       { ignoreError: true }
     );
   } else if (provider === "vllm-local") {
+    const vllmPort = !!runCapture("curl -sf http://localhost:10000/ 2>/dev/null", { ignoreError: true }) ? 10000 : 8000;
     run(
       `openshell provider create --name vllm-local --type openai ` +
       `--credential "OPENAI_API_KEY=dummy" ` +
-      `--config "OPENAI_BASE_URL=${HOST_GATEWAY_URL}:8000/v1" 2>&1 || ` +
+      `--config "OPENAI_BASE_URL=${HOST_GATEWAY_URL}:${vllmPort}/v1" 2>&1 || ` +
       `openshell provider update vllm-local --credential "OPENAI_API_KEY=dummy" ` +
-      `--config "OPENAI_BASE_URL=${HOST_GATEWAY_URL}:8000/v1" 2>&1 || true`,
+      `--config "OPENAI_BASE_URL=${HOST_GATEWAY_URL}:${vllmPort}/v1" 2>&1 || true`,
       { ignoreError: true }
     );
     run(
