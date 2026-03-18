@@ -44,13 +44,19 @@ exit 98
 `,
     );
 
-    const result = spawnSync("bash", [INSTALLER], {
+    const isWin = os.platform() === "win32";
+    let fakeBinPath = fakeBin.replace(/\\/g, "/");
+    if (isWin && fakeBinPath.match(/^[a-zA-Z]:/)) {
+      // For WSL
+      fakeBinPath = `/mnt/${fakeBinPath[0].toLowerCase()}${fakeBinPath.substring(2)}`;
+    }
+
+    const result = spawnSync("bash", ["-c", `PATH="${fakeBinPath}:$PATH" ./install.sh`], {
       cwd: path.join(__dirname, ".."),
       encoding: "utf-8",
       env: {
         ...process.env,
         HOME: tmp,
-        PATH: `${fakeBin}:${process.env.PATH}`,
       },
     });
 
