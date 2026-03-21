@@ -22,8 +22,8 @@ export interface OnboardOptions {
   pluginConfig: NemoClawConfig;
 }
 
-const ENDPOINT_TYPES: EndpointType[] = ["build", "ncp", "nim-local", "vllm", "ollama", "custom"];
-const SUPPORTED_ENDPOINT_TYPES: EndpointType[] = ["build", "ncp"];
+const ENDPOINT_TYPES: EndpointType[] = ["build", "ncp", "nim-local", "vllm", "ollama", "custom", "none"];
+const SUPPORTED_ENDPOINT_TYPES: EndpointType[] = ["build", "ncp", "none"];
 
 function isExperimentalEnabled(): boolean {
   return process.env.NEMOCLAW_EXPERIMENTAL === "1";
@@ -52,6 +52,8 @@ function resolveProfile(endpointType: EndpointType): string {
       return "vllm";
     case "ollama":
       return "ollama";
+    case "none":
+      return "none";
   }
 }
 
@@ -68,6 +70,8 @@ function resolveProviderName(endpointType: EndpointType): string {
       return "vllm-local";
     case "ollama":
       return "ollama-local";
+    case "none":
+      return "none";
   }
 }
 
@@ -82,6 +86,8 @@ function resolveCredentialEnv(endpointType: EndpointType): string {
     case "vllm":
     case "ollama":
       return "OPENAI_API_KEY";
+    case "none":
+      return "NONE";
   }
 }
 
@@ -103,12 +109,18 @@ function endpointRequiresApiKey(endpointType: EndpointType): boolean {
   );
 }
 
+function isLocalEndpoint(endpointType: EndpointType): boolean {
+  return endpointType === "vllm" || endpointType === "ollama" || endpointType === "nim-local" || endpointType === "none";
+}
+
 function defaultCredentialForEndpoint(endpointType: EndpointType): string {
   switch (endpointType) {
     case "vllm":
       return "dummy";
     case "ollama":
       return "ollama";
+    case "none":
+      return "none";
     default:
       return "";
   }
@@ -168,6 +180,11 @@ async function promptEndpoint(
       label: "Local Ollama [experimental]",
       value: "ollama",
       hint: `experimental — ${ollama.installed ? "installed locally" : "localhost:11434"}`,
+    },
+    {
+      label: "No inference (skip)",
+      value: "none",
+      hint: "run without any LLM provider",
     },
   ])) as EndpointType;
 }
@@ -256,6 +273,9 @@ export async function cliOnboard(opts: OnboardOptions): Promise<void> {
       break;
     case "custom":
       endpointUrl = opts.endpointUrl ?? (await promptInput("Custom endpoint URL"));
+      break;
+    case "none":
+      endpointUrl = "http://localhost:0/v1";
       break;
   }
 

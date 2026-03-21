@@ -196,6 +196,13 @@ export default function register(api: OpenClawPluginApi): void {
   // 3. Register nvidia-nim provider — use onboard config if available
   const onboardCfg = loadOnboardConfig();
   const providerCredentialEnv = onboardCfg?.credentialEnv ?? "NVIDIA_API_KEY";
+  
+  // Skip provider registration for "none" endpoint
+  if (onboardCfg?.endpointType === "none") {
+    api.logger.info("NemoClaw: Running in no-inference mode (endpoint=none)");
+    return;
+  }
+  
   const providerLabel = onboardCfg
     ? `NVIDIA NIM (${onboardCfg.endpointType}${onboardCfg.ncpPartner ? ` - ${onboardCfg.ncpPartner}` : ""})`
     : "NVIDIA NIM (build.nvidia.com)";
