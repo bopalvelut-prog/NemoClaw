@@ -48,6 +48,13 @@ async function ensureApiKey() {
     return;
   }
 
+  // Allow running without Nvidia by setting NEMOCLAW_NO_NVIDIA=1
+  if (process.env.NEMOCLAW_NO_NVIDIA === "1") {
+    console.log("  Running without Nvidia (NEMOCLAW_NO_NVIDIA=1)");
+    process.env.NVIDIA_API_KEY = "none";
+    return;
+  }
+
   console.log("");
   console.log("  ┌─────────────────────────────────────────────────────────────────┐");
   console.log("  │  NVIDIA API Key required                                        │");
@@ -56,10 +63,18 @@ async function ensureApiKey() {
   console.log("  │  2. Sign in with your NVIDIA account                            │");
   console.log("  │  3. Click 'Generate API Key' button                             │");
   console.log("  │  4. Paste the key below (starts with nvapi-)                    │");
+  console.log("  │                                                                 │");
+  console.log("  │  Or set NEMOCLAW_NO_NVIDIA=1 to skip                            │");
   console.log("  └─────────────────────────────────────────────────────────────────┘");
   console.log("");
 
-  key = await prompt("  NVIDIA API Key: ");
+  key = await prompt("  NVIDIA API Key (or 'skip'): ");
+
+  if (key.toLowerCase() === "skip" || key === "") {
+    console.log("  Skipping API key - running without Nvidia");
+    process.env.NVIDIA_API_KEY = "none";
+    return;
+  }
 
   if (!key || !key.startsWith("nvapi-")) {
     console.error("  Invalid key. Must start with nvapi-");

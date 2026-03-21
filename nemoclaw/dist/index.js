@@ -48,6 +48,11 @@ function register(api) {
     // 3. Register nvidia-nim provider — use onboard config if available
     const onboardCfg = (0, config_js_1.loadOnboardConfig)();
     const providerCredentialEnv = onboardCfg?.credentialEnv ?? "NVIDIA_API_KEY";
+    // Skip provider registration for "none" endpoint
+    if (onboardCfg?.endpointType === "none") {
+        api.logger.info("NemoClaw: Running in no-inference mode (endpoint=none)");
+        return;
+    }
     const providerLabel = onboardCfg
         ? `NVIDIA NIM (${onboardCfg.endpointType}${onboardCfg.ncpPartner ? ` - ${onboardCfg.ncpPartner}` : ""})`
         : "NVIDIA NIM (build.nvidia.com)";

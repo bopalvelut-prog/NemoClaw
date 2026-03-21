@@ -7,8 +7,8 @@ const node_child_process_1 = require("node:child_process");
 const config_js_1 = require("../onboard/config.js");
 const prompt_js_1 = require("../onboard/prompt.js");
 const validate_js_1 = require("../onboard/validate.js");
-const ENDPOINT_TYPES = ["build", "ncp", "nim-local", "vllm", "ollama", "custom"];
-const SUPPORTED_ENDPOINT_TYPES = ["build", "ncp"];
+const ENDPOINT_TYPES = ["build", "ncp", "nim-local", "vllm", "ollama", "custom", "none"];
+const SUPPORTED_ENDPOINT_TYPES = ["build", "ncp", "none"];
 function isExperimentalEnabled() {
     return process.env.NEMOCLAW_EXPERIMENTAL === "1";
 }
@@ -33,6 +33,8 @@ function resolveProfile(endpointType) {
             return "vllm";
         case "ollama":
             return "ollama";
+        case "none":
+            return "none";
     }
 }
 function resolveProviderName(endpointType) {
@@ -48,6 +50,8 @@ function resolveProviderName(endpointType) {
             return "vllm-local";
         case "ollama":
             return "ollama-local";
+        case "none":
+            return "none";
     }
 }
 function resolveCredentialEnv(endpointType) {
@@ -61,6 +65,8 @@ function resolveCredentialEnv(endpointType) {
         case "vllm":
         case "ollama":
             return "OPENAI_API_KEY";
+        case "none":
+            return "NONE";
     }
 }
 function isNonInteractive(opts) {
@@ -81,12 +87,17 @@ function endpointRequiresApiKey(endpointType) {
         endpointType === "nim-local" ||
         endpointType === "custom");
 }
+function isLocalEndpoint(endpointType) {
+    return endpointType === "vllm" || endpointType === "ollama" || endpointType === "nim-local" || endpointType === "none";
+}
 function defaultCredentialForEndpoint(endpointType) {
     switch (endpointType) {
         case "vllm":
             return "dummy";
         case "ollama":
             return "ollama";
+        case "none":
+            return "none";
         default:
             return "";
     }
@@ -141,6 +152,11 @@ async function promptEndpoint(ollama) {
             label: "Local Ollama [experimental]",
             value: "ollama",
             hint: `experimental — ${ollama.installed ? "installed locally" : "localhost:11434"}`,
+        },
+        {
+            label: "No inference (skip)",
+            value: "none",
+            hint: "run without any LLM provider",
         },
     ]));
 }
@@ -219,6 +235,9 @@ async function cliOnboard(opts) {
             break;
         case "custom":
             endpointUrl = opts.endpointUrl ?? (await (0, prompt_js_1.promptInput)("Custom endpoint URL"));
+            break;
+        case "none":
+            endpointUrl = "http://localhost:0/v1";
             break;
     }
     if (!endpointUrl) {
