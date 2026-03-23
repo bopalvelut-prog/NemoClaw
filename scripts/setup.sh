@@ -113,24 +113,14 @@ if curl -s http://localhost:8000/v1/models > /dev/null 2>&1 || python3 -c "impor
     "OPENAI_BASE_URL=http://host.openshell.internal:8000/v1"
 fi
 
-# 4a. Ollama (macOS local inference)
+# 4a. prima.cpp/llama.cpp (local inference)
 if [ "$(uname -s)" = "Darwin" ]; then
-  if ! command -v ollama > /dev/null 2>&1; then
-    info "Installing Ollama..."
-    brew install ollama 2>/dev/null || warn "Ollama install failed (brew required). Install manually: https://ollama.com"
-  fi
-  if command -v ollama > /dev/null 2>&1; then
-    # Start Ollama service if not running
-    if ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
-      info "Starting Ollama service..."
-      OLLAMA_HOST=0.0.0.0:11434 ollama serve > /dev/null 2>&1 &
-      sleep 2
-    fi
+  if command -v llama-server > /dev/null 2>&1; then
     upsert_provider \
-      "ollama-local" \
+      "llamacpp-local" \
       "openai" \
-      "OPENAI_API_KEY=ollama" \
-      "OPENAI_BASE_URL=http://host.openshell.internal:11434/v1"
+      "OPENAI_API_KEY=llamacpp" \
+      "OPENAI_BASE_URL=http://localhost:8080/v1"
   fi
 fi
 

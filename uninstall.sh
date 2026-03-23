@@ -29,9 +29,8 @@ NEMOCLAW_STATE_DIR="${HOME}/.nemoclaw"
 OPENSHELL_CONFIG_DIR="${HOME}/.config/openshell"
 NEMOCLAW_CONFIG_DIR="${HOME}/.config/nemoclaw"
 DEFAULT_GATEWAY="nemoclaw"
-PROVIDERS=("nvidia-nim" "vllm-local" "ollama-local" "nvidia-ncp" "nim-local")
+PROVIDERS=("nvidia-nim" "vllm-local" "llamacpp-local" "nvidia-ncp" "nim-local")
 OPEN_SHELL_INSTALL_PATHS=("/usr/local/bin/openshell")
-OLLAMA_MODELS=("nemotron-3-super:120b" "nemotron-3-nano:30b")
 TMP_ROOT="${TMPDIR:-/tmp}"
 
 ASSUME_YES=false
@@ -308,25 +307,19 @@ remove_related_docker_images() {
   fi
 }
 
-remove_optional_ollama_models() {
+remove_optional_model_artifacts() {
   if [ "$DELETE_MODELS" != true ]; then
-    info "Keeping Ollama models as requested."
+    info "Keeping local model files as requested."
     return 0
   fi
 
-  if ! command -v ollama > /dev/null 2>&1; then
-    warn "ollama not found; skipping model cleanup."
-    return 0
+  info "Cleaning up local model artifacts..."
+  # llama.cpp/prima.cpp models are managed server-side
+  # Remove any downloaded GGUF files if requested
+  if [ -d "${HOME}/.cache/llama.cpp" ]; then
+    rm -rf "${HOME}/.cache/llama.cpp"
+    info "Removed llama.cpp model cache"
   fi
-
-  local model
-  for model in "${OLLAMA_MODELS[@]}"; do
-    if ollama rm "$model" > /dev/null 2>&1; then
-      info "Removed Ollama model '$model'"
-    else
-      warn "Ollama model '$model' not found or already removed"
-    fi
-  done
 }
 
 remove_runtime_temp_artifacts() {
@@ -385,7 +378,7 @@ main() {
   remove_related_docker_images
 
   info "Removing optional Ollama models..."
-  remove_optional_ollama_models
+  remove_optional_model_artifacts
 
   info "Removing runtime temp artifacts..."
   remove_runtime_temp_artifacts

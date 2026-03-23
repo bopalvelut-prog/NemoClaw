@@ -11,7 +11,7 @@ profiles:
   - ncp
   - nim-local
   - vllm
-  - ollama
+  - llamacpp
 
 description: |
   NemoClaw blueprint: orchestrates OpenClaw sandbox creation, migration,
@@ -55,13 +55,13 @@ components:
         credential_env: "OPENAI_API_KEY"
         credential_default: "dummy"
 
-      ollama:
+      llamacpp:
         provider_type: "openai"
-        provider_name: "ollama-local"
-        endpoint: "http://localhost:11434/v1"
-        model: "nemotron-3-nano"
+        provider_name: "llamacpp-local"
+        endpoint: "http://localhost:8080/v1"
+        model: "qwen2.5-0.5b"
         credential_env: "OPENAI_API_KEY"
-        credential_default: "ollama"
+        credential_default: "llamacpp"
 
   policy:
     base: "sandboxes/openclaw/policy.yaml"
