@@ -7,13 +7,13 @@ This document describes the setup and known limitations of running NemoClaw (NVI
 ## Setup Components
 
 ### Primaclaw (e727-local-ai)
-- Location: `/home/ma/e727-local-ai`
+- Location: `/home/m/e727-local-ai`
 - Model: `qwen2.5-coder-3b-instruct-q6_k.gguf`
 - Port: 8082
 - Direct URL: `http://localhost:8082/v1/models`
 
 ### NemoClaw (OpenShell)
-- Location: `/home/ma/NemoClaw`
+- Location: `/home/m/NemoClaw`
 - Gateway: Running on port 8085
 - Sandbox: `test2`
 - Provider: `local-server` (configured for primaclaw-bridge)
@@ -93,11 +93,11 @@ NemoClaw is designed for cloud inference (NVIDIA NIM, Anthropic, OpenAI). For lo
 
 ## Files
 
-- Primaclaw config: `/home/ma/e727-local-ai/src/config.py`
-- Worker script: `/home/ma/e727-local-ai/src/worker.py`
-- NemoClaw policy: `/home/ma/local-policy.yaml`
-- Bridge startup: `/home/ma/start-primaclaw-bridge.sh`
-- Bridge Dockerfile: `/home/ma/primaclaw-container/Dockerfile`
+- Primaclaw config: `/home/m/e727-local-ai/src/config.py`
+- Worker script: `/home/m/e727-local-ai/src/worker.py`
+- NemoClaw policy: `/home/m/local-policy.yaml`
+- Bridge startup: `/home/m/start-primaclaw-bridge.sh`
+- Bridge Dockerfile: `/home/m/primaclaw-container/Dockerfile`
 
 ## Related Issues
 
